@@ -51,7 +51,6 @@ class Circle:
 class Rectangle:
     def __init__(self, bottom_left, top_right):
         if isinstance(bottom_left, Point) and isinstance(top_right, Point):
-            # Validate that the points form a valid rectangle
             if bottom_left.x == top_right.x or bottom_left.y == top_right.y:
                 raise ValueError("The points provided are colinear or identical and cannot form a valid rectangle.")
             self.bottom_left = bottom_left
@@ -75,60 +74,50 @@ class Rectangle:
 
 class ShapeOperations:
     @staticmethod
-    def distance(shape1, shape2):
-        if isinstance(shape1, Point) and isinstance(shape2, Point):
-            return shape1.distance(shape2)
-        elif isinstance(shape1, Circle) and isinstance(shape2, Circle):
-            return max(0, shape1.center.distance(shape2.center) - (shape1.radius + shape2.radius))
-        elif isinstance(shape1, Rectangle) and isinstance(shape2, Rectangle):
-            return ShapeOperations._rectangle_to_rectangle_distance(shape1, shape2)
-        elif isinstance(shape1, Circle) and isinstance(shape2, Rectangle):
-            return ShapeOperations._circle_to_rectangle_distance(shape1, shape2)
-        elif isinstance(shape1, Rectangle) and isinstance(shape2, Circle):
-            return ShapeOperations._circle_to_rectangle_distance(shape2, shape1)
-        else:
-            raise ValueError("Distance calculation is not supported for these shapes.")
+    def distance_circles(circle1, circle2):
+        if isinstance(circle1, Circle) and isinstance(circle2, Circle):
+            center_distance = circle1.center.distance(circle2.center)
+            if center_distance == 0:  # Concentric circles
+                return abs(circle1.radius - circle2.radius)
+            return max(0, center_distance - (circle1.radius + circle2.radius))
+        raise ValueError("Distance is only implemented for Circles.")
 
     @staticmethod
-    def _rectangle_to_rectangle_distance(rect1, rect2):
-        horizontal_gap = max(0,
-                             rect1.bottom_left.x - rect2.top_right.x,
-                             rect2.bottom_left.x - rect1.top_right.x)
-        vertical_gap = max(0,
-                           rect1.bottom_left.y - rect2.top_right.y,
-                           rect2.bottom_left.y - rect1.top_right.y)
-        if horizontal_gap == 0 and vertical_gap == 0:
-            return 0
-        return math.hypot(horizontal_gap, vertical_gap)
+    def union_circles(circle1, circle2):
+        if isinstance(circle1, Circle) and isinstance(circle2, Circle):
+            center_distance = circle1.center.distance(circle2.center)
+            if center_distance == 0:  # Concentric circles
+                return circle1 if circle1.radius > circle2.radius else circle2
+            if center_distance + min(circle1.radius, circle2.radius) <= max(circle1.radius, circle2.radius):
+                return circle1 if circle1.radius > circle2.radius else circle2
+
+            new_radius = (center_distance + circle1.radius + circle2.radius) / 2
+            dx = (circle2.center.x - circle1.center.x) / center_distance
+            dy = (circle2.center.y - circle1.center.y) / center_distance
+            new_center_x = circle1.center.x + dx * (new_radius - circle1.radius)
+            new_center_y = circle1.center.y + dy * (new_radius - circle1.radius)
+
+            new_center = Point(new_center_x, new_center_y)
+            return Circle(new_center, new_radius)
+        raise ValueError("Union is only implemented for Circles.")
 
     @staticmethod
-    def _circle_to_rectangle_distance(circle, rectangle):
-        closest_x = max(rectangle.bottom_left.x, min(circle.center.x, rectangle.top_right.x))
-        closest_y = max(rectangle.bottom_left.y, min(circle.center.y, rectangle.top_right.y))
-        center_to_closest_distance = math.hypot(circle.center.x - closest_x, circle.center.y - closest_y)
-        return max(0, center_to_closest_distance - circle.radius)
+    def intersection_circles(circle1, circle2):
+        if isinstance(circle1, Circle) and isinstance(circle2, Circle):
+            center_distance = circle1.center.distance(circle2.center)
+            if center_distance == 0:  # Concentric circles
+                smaller_circle = circle1 if circle1.radius < circle2.radius else circle2
+                return math.pi * smaller_circle.radius ** 2
+            if center_distance >= circle1.radius + circle2.radius:  # No overlap
+                return 0
 
-    @staticmethod
-    def union(rect1, rect2):
-        if isinstance(rect1, Rectangle) and isinstance(rect2, Rectangle):
-            bottom_left = Point(min(rect1.bottom_left.x, rect2.bottom_left.x),
-                                min(rect1.bottom_left.y, rect2.bottom_left.y))
-            top_right = Point(max(rect1.top_right.x, rect2.top_right.x),
-                              max(rect1.top_right.y, rect2.top_right.y))
-            return Rectangle(bottom_left, top_right)
-        raise NotImplementedError("Union is only implemented for Rectangles.")
-
-    @staticmethod
-    def intersection(rect1, rect2):
-        if isinstance(rect1, Rectangle) and isinstance(rect2, Rectangle):
-            bottom_left = Point(max(rect1.bottom_left.x, rect2.bottom_left.x),
-                                max(rect1.bottom_left.y, rect2.bottom_left.y))
-            top_right = Point(min(rect1.top_right.x, rect2.top_right.x),
-                              min(rect1.top_right.y, rect2.top_right.y))
-            if bottom_left.x < top_right.x and bottom_left.y < top_right.y:
-                return Rectangle(bottom_left, top_right)
-            return None  # No intersection
-        raise NotImplementedError("Intersection is only implemented for Rectangles.")
+            # Partial overlap
+            r1, r2, d = circle1.radius, circle2.radius, center_distance
+            term1 = r1**2 * math.acos((d**2 + r1**2 - r2**2) / (2 * d * r1))
+            term2 = r2**2 * math.acos((d**2 + r2**2 - r1**2) / (2 * d * r2))
+            term3 = 0.5 * math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2))
+            return term1 + term2 - term3
+        raise ValueError("Intersection is only implemented for Circles.")
 
 
 class GeometricCalculatorCLI:
@@ -160,14 +149,9 @@ Commands:
   > r1 = Rectangle(p1, p2)
 
 - Query shapes:
-  > p1.distance(p2)
-  > c1.area()
-  > c1.circumference()
-  > r1.area()
-  > r1.perimeter()
-  > ShapeOperations.distance(shape1, shape2)
-  > ShapeOperations.union(rect1, rect2)
-  > ShapeOperations.intersection(rect1, rect2)
+  > ShapeOperations.distance_circles(c1, c2)
+  > ShapeOperations.union_circles(c1, c2)
+  > ShapeOperations.intersection_circles(c1, c2)
 
 - Exit:
   > exit / quit

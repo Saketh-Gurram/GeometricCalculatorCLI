@@ -128,30 +128,37 @@ class ShapeOperations:
         raise ValueError("Intersection is only implemented for Circles.")
 
     @staticmethod
-    def union(rect1, rect2):
-        if isinstance(rect1, Rectangle) and isinstance(rect2, Rectangle):
-            bottom_left = Point(
-                min(rect1.bottom_left.x, rect2.bottom_left.x),
-                min(rect1.bottom_left.y, rect2.bottom_left.y)
-            )
-            top_right = Point(
-                max(rect1.top_right.x, rect2.top_right.x),
-                max(rect1.top_right.y, rect2.top_right.y)
-            )
-            return Rectangle(bottom_left, top_right)
-        raise ValueError("Union is only implemented for Rectangles.")
-
-    @staticmethod
     def distance(rect1, rect2):
         if isinstance(rect1, Rectangle) and isinstance(rect2, Rectangle):
-            # Calculate horizontal and vertical gaps
-            horizontal_gap = max(0, abs(rect2.bottom_left.x - rect1.top_right.x))
-            vertical_gap = max(0, abs(rect2.bottom_left.y - rect1.top_right.y))
+            # Extract corners for rect1
+            rect1_corners = [
+                rect1.bottom_left,
+                rect1.top_right,
+                Point(rect1.top_right.x, rect1.bottom_left.y),  # Bottom-right
+                Point(rect1.bottom_left.x, rect1.top_right.y),  # Top-left
+            ]
 
-            # If no overlap, calculate Euclidean distance; else, return 0
-            if horizontal_gap == 0 and vertical_gap == 0:
-                return 0
-            return math.sqrt(horizontal_gap**2 + vertical_gap**2)
+            # Extract corners for rect2
+            rect2_corners = [
+                rect2.bottom_left,
+                rect2.top_right,
+                Point(rect2.top_right.x, rect2.bottom_left.y),  # Bottom-right
+                Point(rect2.bottom_left.x, rect2.top_right.y),  # Top-left
+            ]
+
+            # Check if rectangles overlap
+            if (rect1.top_right.x >= rect2.bottom_left.x and rect1.bottom_left.x <= rect2.top_right.x and
+                rect1.top_right.y >= rect2.bottom_left.y and rect1.bottom_left.y <= rect2.top_right.y):
+                return 0  # Overlap or touch
+
+            # Compute the minimum distance between corners
+            min_distance = float('inf')
+            for corner1 in rect1_corners:
+                for corner2 in rect2_corners:
+                    distance = corner1.distance(corner2)
+                    min_distance = min(min_distance, distance)
+
+            return min_distance
         raise ValueError("Distance is only implemented for Rectangles.")
 
 

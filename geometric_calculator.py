@@ -174,6 +174,7 @@ class GeometricCalculatorCLI:
             try:
                 command = input(">>> ").strip()
                 if command.lower() in ("exit", "quit"):
+                    print("Goodbye! Hope to see you again :)")
                     break
                 elif command.lower() == "help":
                     self.print_help()
